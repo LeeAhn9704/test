@@ -1,0 +1,649 @@
+<?php
+
+	require_once $_SERVER['DOCUMENT_ROOT'] . '/include/config.php';
+	require_once $_SERVER['DOCUMENT_ROOT'] . '/include/function.php';
+
+	$pop = request('pop');
+	
+	//미리보기시
+	if($pop=='Y'){
+		$branch_idx = request('branch_idx');
+		// $branch_idx = 2;
+		$terminal_idx = request('terminal_idx');
+		$schedule_idx = request('schedule_idx');
+		
+		$file_url_arr =[];
+		$query = "
+			SELECT * FROM schedule_content WHERE schedule_idx = '$schedule_idx' AND dell_yn = 'N' ORDER BY content_num";
+			$result = executeQuery($mysqli, $query);
+			if ($result -> num_rows != 0) {
+				while ($row = $result -> fetch_assoc()) {
+					$file_url = $row['file_url'];
+					array_push($file_url_arr, $file_url);
+				}
+			}
+			
+		//앨범 정보 받아오기
+		$kids_name_arr =[];
+		$kids_age_arr =[];
+		$kids_file_url_arr =[];
+		$query = "
+			SELECT * ,TIMESTAMPDIFF(YEAR, `kid_birth`, CURDATE()) AS age FROM kids_photo WHERE branch_idx = '$branch_idx' group by kid_name,kid_birth ";
+			$result = executeQuery($mysqli, $query);
+			if ($result -> num_rows != 0) {
+				while ($row = $result -> fetch_assoc()) {
+					$kid_name = $row['kid_name'];
+					$file_url = $row['file_url'];
+					$age = $row['age'];
+					array_push($kids_name_arr, $kid_name);
+					array_push($kids_file_url_arr, $file_url);
+					array_push($kids_age_arr, $age);
+				}
+			}
+	
+	}else{
+		//로그인 페이지 완성후 $terminal_idx값 받아오기 현재는 하드코딩
+		$terminal_idx = 9;
+		
+		$query = "
+			SELECT * FROM schedule WHERE terminal_idx = '$terminal_idx' AND dell_yn = 'N'  AND start_date >= CURDATE() ORDER BY start_date ASC LIMIT 1";
+			$result = executeQuery($mysqli, $query);
+			if ($result -> num_rows != 0) {
+				$row = $result -> fetch_assoc();
+				$schedule_idx = $row['idx'];
+			}
+			
+			
+		$file_url_arr =[];
+		$query = "
+			SELECT * FROM schedule_content WHERE schedule_idx = '$schedule_idx' AND dell_yn = 'N' ORDER BY content_num";
+			$result = executeQuery($mysqli, $query);
+			if ($result -> num_rows != 0) {
+				while ($row = $result -> fetch_assoc()) {
+					$file_url = $row['file_url'];
+					array_push($file_url_arr, $file_url);
+				}
+			}
+			
+	}
+	
+	
+	
+	
+	$idx = request('idx');
+	
+	// echo $query;
+	// print_r($file_url_arr);
+?>
+
+<!doctype html>
+<html lang="ko">
+<head>
+<?php include ("inc/head.php"); ?>
+<title>메인</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+<link rel="stylesheet" href="css/jquery.modal.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.0.0/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-modal/0.9.1/jquery.modal.min.js"></script>
+
+	<!-- 키패드를 위한 api 선언 -->
+	<script src="../js/keyboard/hangul.js" type="text/javascript"></script>
+	<script src="../js/keyboard/keyboard.js" type="text/javascript"></script>
+	<!-- <link rel="stylesheet" href="https://unpkg.com/simple-keyboard@latest/build/css/index.css">
+	<script src="https://unpkg.com/simple-keyboard@latest"></script> -->
+	<style>
+
+
+#keyboardzone {
+      width: 840px;
+    height: 300px;
+    position: absolute;
+    display: block;
+    background: #bfbfbf;
+    bottom: 100px;
+    right: 10px;
+    z-index:9999;
+    
+    background-color: #f5f5f5;
+    box-shadow: 0px -2px 10px rgba(0, 0, 0, 0.1);
+        border-radius: 5px;
+    border: 1px solid #ccc;
+    
+}
+
+
+#keyboardzone table th {
+	 width: calc(100% / 12);
+    /*display: table-cell;*/
+    vertical-align: middle;
+    background: #fff;
+    border: 1px solid #bfbfbf; 
+    box-sizing: border-box;
+    padding: 5px;
+    box-shadow: 0 0 3px 1px rgba(0,0,0,.3);
+    user-select: none;
+      cursor:pointer;
+}
+
+#keyboardzone table th:active {
+    background-color: #ccc;
+}
+.gall_list::-webkit-scrollbar {
+  display: none;
+}
+</style>
+</head>
+
+
+<body>
+
+<?php include ("inc/top_header.php"); ?>
+
+<!-- 배경 스와이프 실제 데이터 처리 후 코드작업-->
+<div class="swiper gallery">
+	<ul class="swiper-wrapper">
+		   <?php
+	if(count($file_url_arr)!=0){
+        for ($i = 0; $i < count($file_url_arr); $i++) {
+        ?>
+            <li class="swiper-slide">
+                <?php
+                // 각 슬라이드의 파일 타입을 확인하여 비디오인 경우 비디오 태그로 출력
+                $file_type = pathinfo($file_url_arr[$i], PATHINFO_EXTENSION);
+                if (in_array($file_type, ['mp4', 'webm', 'ogg'])) {
+                ?>
+                    <video src="<?php echo $file_url_arr[$i]; ?>" alt="" style="width: 100%; height: 100%; object-fit:cover;" autoplay  muted=""></video>
+                <?php
+                } else {
+                ?>
+                    <img src="<?php echo $file_url_arr[$i]; ?>" alt="" class="gall_img">
+                <?php
+                }
+                ?>
+            </li>
+        <?php
+        }
+        }else{
+       ?>
+       <style>
+	       .freeze{
+	       		display:none;
+	       }
+	       .none_content{
+		       	background-color:rgb(0, 0, 0,0.7);
+		        color: white; 
+		        font-size: 24px; 
+		        display: flex; 
+		        align-items: center;  
+		        justify-content: center;  
+		        height: 100%; 
+		        text-align: center;
+	       }
+       </style>
+       	<li class="swiper-slide none_content" style=" ">
+			등록된 컨텐츠가 없습니다.		
+		</li>
+       <?php
+        }
+        ?>
+	</ul>
+	<!-- <div class="btn_area freeze"> -->
+	<div class="btn_area">
+		<a class="btn_gallery" href="#album" rel="modal:open"><i class="fa-regular fa-images"></i> 앨범</a>
+	</div>
+	<div class="swiper-pagination"></div>
+	<div class="swiper-button-prev"></div>
+	<div class="swiper-button-next"></div>
+</div>
+<!-- //배경 스와이프 -->
+
+<!-- 배경 스와이프 -->
+<!-- <div class="swiper gallery">
+	<ul class="swiper-wrapper">
+		<li class="swiper-slide">
+			<img src="img/sample01.jpg" alt="" class="gall_img">
+		</li>
+		<li class="swiper-slide">
+			<img src="img/sample02.jpg" alt="" class="gall_img">
+		</li>
+		<li class="swiper-slide">
+			<img src="img/sample03.jpg" alt="" class="gall_img"> 
+			<video src="/data/content/202312/20231201114010.mp4"  alt="영상1"  style="width: 100%; height: 100%; object-fit:cover;" autoplay  muted=""></video>
+		</li>
+		<li class="swiper-slide">
+			<img src="img/sample04.jpg" alt="" class="gall_img">
+		</li>
+		<li class="swiper-slide">
+			<img src="img/sample05.jpg" alt="" class="gall_img">
+		</li>
+	</ul>
+	<div class="btn_area freeze">
+		<a class="btn_gallery" href="#album" rel="modal:open"><i class="fa-regular fa-images"></i> 앨범</a>
+	</div>
+	<div class="swiper-pagination"></div>
+	<div class="swiper-button-prev"></div>
+	<div class="swiper-button-next"></div>
+</div> -->
+<!-- //배경 스와이프 -->
+
+<!-- 학생 리스트 스와이프 -->
+<div id="album" class="modal std_swipe">
+	<div class="swiper gallery2 gall_album">
+		<ul class="swiper-wrapper">
+	<?php
+	if(count($kids_file_url_arr)!=0){
+        for ($i = 0; $i < count($kids_file_url_arr); $i++) {
+        ?>
+        	<li class="swiper-slide">
+				<figure class="img_area">
+					<figcaption class="s_name"><?php echo $kids_name_arr[$i]; ?>(<?php echo $kids_age_arr[$i]; ?>)</figcaption>
+					<!-- <a  href="#srchResult" rel="modal:open"><img src="<?php echo $kids_file_url_arr[$i]; ?>" alt="" class="gall_img kids"></a> -->
+					<a><img src="<?php echo $kids_file_url_arr[$i]; ?>" alt="" class="gall_img kids"></a>
+				</figure>
+			</li>
+           <?php
+        }
+        }else{
+       ?>
+      <style>
+	       .freeze{
+	       		display:none;
+	       }
+	       .none_content{
+		       	background-color:rgb(0, 0, 0,0.7);
+		        color: white; 
+		        font-size: 24px; 
+		        display: flex; 
+		        align-items: center;  
+		        justify-content: center;  
+		        height: 100%; 
+		        text-align: center;
+	       }
+       </style>
+       	
+		<li class="swiper-slide none_content">
+				등록된 앨범이 없습니다.		
+			</li>
+         <?php
+        }
+        ?>
+			<!-- <li class="swiper-slide">
+				<figure class="img_area">
+					<figcaption class="s_name">김민희 (11)</figcaption>
+					<img src="img/sample21.jpg" alt="" class="gall_img kids">
+				</figure>
+			</li>
+			<li class="swiper-slide">
+				<figure class="img_area">
+					<figcaption class="s_name">김민희 (11)</figcaption>
+					<img src="img/sample22.jpg" alt="" class="gall_img kids">
+				</figure>
+			</li>
+			<li class="swiper-slide">
+				<figure class="img_area">
+					<figcaption class="s_name">김민희 (11)</figcaption>
+					<img src="img/sample23.jpg" alt="" class="gall_img kids">
+				</figure>
+			</li> -->
+		</ul>
+		<div class="btn_area">
+			<div class="btn_wrap">
+				<a class="btn_gallery" rel="modal:close"><i class="fa-solid fa-xmark"></i> 앨범닫기</a>
+			</div>
+			<?php
+			if(count($kids_file_url_arr)!=0){
+        ?>
+			<form class="album_search">
+				<fieldset class="search_inner">
+					<legend>검색</legend>
+					<input type="search" id="search" name="search" class="input" placeholder="학생 이름" autocomplete="off">
+					<input type="hidden" id="branch_idx" name="branch_idx" class="input" placeholder="지점 idx" value="<?php echo $branch_idx;?>">
+					<!-- <a class="btn_search" href="#srchResult" rel="modal:open" onclick="kid_search()"><i class="fa-solid fa-magnifying-glass"></i> 검색</a> -->
+					<a class="btn_search" onclick="kid_search()"><i class="fa-solid fa-magnifying-glass"></i> 검색</a>
+				</fieldset>
+			</form>
+	
+	<?php
+		}
+        ?>
+		</div>
+		<div class="swiper-pagination"></div>
+		<div class="swiper-button-prev"></div>
+		<div class="swiper-button-next"></div>
+	</div>
+	<!-- 키패드와 닫기 버튼을 위한 div 생성 -->
+    <!-- <div class="keyboard-container">
+        <div class="simple-keyboard" id="simple-keyboard"></div> 
+        <button class="close-keyboard">×</button>
+    </div>-->
+    <div id="keyboardzone" style="display: none;"></div>
+</div>
+
+<!-- //학생 리스트 스와이프 -->
+<!-- 검색리스트 -->
+<div id="srchResult" class="modal gall_album search_result">
+	<div class="search_inner">
+		<div class="gall_list" >
+			<ul>
+				<li>
+					<a href="#srchDetail" class="go_detail" rel="modal:open"></a>
+					<figure class="img_area">
+						<figcaption class="s_name">김민희 (11)</figcaption>
+						<img src="img/sample21.jpg" alt="" class="gall_img kids">
+					</figure>
+				</li>
+				
+			</ul>
+		</div>
+		<div class="btn_wrap">
+			<a class="btn_gallery btn_gall_top" rel="modal:close"><i class="fa-solid fa-arrow-left"></i> 뒤로</a>
+		</div>
+		<div class="btn_area">
+			<!-- <form class="album_search">
+				<fieldset class="search_inner">
+					<legend>검색</legend>
+					<input type="search" id="search" name="search" class="input" placeholder="학생 이름">
+					<button type="button" class="btn_search"><i class="fa-solid fa-magnifying-glass"></i> 검색</button>
+				</fieldset>
+			</form> -->
+		</div>
+	</div>
+</div>
+<!-- //검색리스트 -->
+
+
+<!-- 상세보기 -->
+<div id="srchDetail" class="modal search_detail">
+	<div class="search_inner">
+		<div class="swiper gall_album gallery3">
+			<ul class="swiper-wrapper">
+				<li class="swiper-slide">
+					<figure class="img_area">
+						<figcaption class="s_name">김민희 (11)</figcaption>
+						<img src="img/sample21.jpg" alt="" class="gall_img kids">
+					</figure>
+				</li>
+				<li class="swiper-slide">
+					<figure class="img_area">
+						<figcaption class="s_name">김민희 (11)</figcaption>
+						<img src="img/sample21.jpg" alt="" class="gall_img kids">
+					</figure>
+				</li>
+				<li class="swiper-slide">
+					<figure class="img_area">
+						<figcaption class="s_name">김민희 (11)</figcaption>
+						<img src="img/sample21.jpg" alt="" class="gall_img kids">
+					</figure>
+				</li>
+			</ul>
+			<div class="swiper-pagination"></div>
+			<div class="swiper-button-prev"></div>
+			<div class="swiper-button-next"></div>
+		</div>
+		<div class="btn_wrap">
+			<a class="btn_gallery btn_gall_top" rel="modal:close"><i class="fa-solid fa-arrow-left"></i> 뒤로</a>
+		</div>
+	</div>
+</div>
+<!-- //상세보기 -->
+
+
+<script>
+	//배경
+const swiperA = new Swiper('.gallery', {
+    loop: true,
+    autoplay: {
+        delay: 2500,
+        disableOnInteraction: false,
+    },
+    pagination: {
+        el: '.swiper-pagination',
+    },
+    navigation: {
+        nextEl: '.swiper-button-next',
+        prevEl: '.swiper-button-prev',
+    },
+    scrollbar: {
+        el: '.swiper-scrollbar',
+    },
+    on: {
+        init: function () {
+            const firstSlide = this.slides[this.activeIndex];
+            const isVideoSlide = firstSlide.querySelector('video');
+
+            if (isVideoSlide) {
+                const videoElement = firstSlide.querySelector('video');
+                videoElement.play();
+                this.autoplay.stop();
+
+                videoElement.addEventListener('ended', () => {
+                    this.slideNext();
+                    this.autoplay.start();
+                });
+            }
+        },
+        slideChangeTransitionStart: function () {
+            const currentSlide = this.slides[this.activeIndex];
+            const isImageSlide = !currentSlide.querySelector('video');
+
+            if (isImageSlide) {
+                this.autoplay.start();
+            } else {
+                this.autoplay.stop();
+            }
+        },
+        slideChangeTransitionEnd: function () {
+            const currentSlide = this.slides[this.activeIndex];
+            const videos = currentSlide.querySelectorAll('video');
+
+            videos.forEach(videoElement => {
+                videoElement.play();
+                this.autoplay.stop();
+
+                videoElement.addEventListener('ended', () => {
+                    this.slideNext();
+                    this.autoplay.start();
+                });
+            });
+
+            this.slides.forEach((slide, index) => {
+                if (index !== this.activeIndex) {
+                    const otherVideos = slide.querySelectorAll('video');
+                    otherVideos.forEach(otherVideo => {
+                        otherVideo.pause();
+                        otherVideo.currentTime = 0;
+                    });
+                }
+            });
+        },
+    },
+});
+
+document.querySelector('.swiper-button-next').addEventListener('click', () => {
+    swiperA.slideNext();
+});
+
+document.querySelector('.swiper-button-prev').addEventListener('click', () => {
+    swiperA.slidePrev();
+});
+// 학생리스트
+const swiperB = new Swiper('.gallery2', {
+  loop: true,
+  autoplay: {
+    delay: 2000,
+    disableOnInteraction: false,
+  },
+  pagination: {
+    el: '.swiper-pagination',
+  },
+  navigation: {
+    nextEl: '.swiper-button-next',
+    prevEl: '.swiper-button-prev',
+  },
+  on: {
+    init: function () {
+      this.autoplay.start(); // 슬라이더 초기화 시 자동 슬라이드 시작
+    },
+  },
+});
+
+
+	//상세보기
+	const swiperC = new Swiper('.gallery3', {
+	  loop: true,
+      autoplay: {
+        delay: 2000,
+        disableOnInteraction: false,
+      },
+	  pagination: {
+		el: '.swiper-pagination',
+	  },
+	  navigation: {
+		nextEl: '.swiper-button-next',
+		prevEl: '.swiper-button-prev',
+	  },
+	});
+</script>
+
+<script>
+	$(".gall_img").wrap(function() {
+	  return "<em class='img_wrap' style='background-image:url(" + $(this).attr("src") + ")')></em>";
+	});
+	
+</script>
+
+<script>
+	$('.std_swipe, .search_result').modal({
+	  closeExisting: false
+	});
+</script>
+
+<script type="text/javascript">
+	var keyboardzone = document.getElementById("keyboardzone");
+	var input = document.getElementById("search");
+
+	var keyboard = new customKeyboard(
+		keyboardzone/*생성위치 태그*/,
+		input/*input을 받을 태그*/, 
+        function()/*클릭 했을때*/ {
+            console.log("click : ", text);
+        },
+        function()/*esc 눌렀을때*/ {
+            console.log("esc");
+        },
+        function(e)/*앤터 눌렀을때*/ {
+            console.log("앤터 : ", text);
+        }, 
+        null/*키패드를 모양 값*/
+        // {
+        //     koNormal : [
+        //         ['뒤로','1','2','3','4','5','6','7','8','9','0', 'backspace'],
+        //         ['ㅂ', 'ㅈ', 'ㄷ', 'ㄱ', 'ㅅ', 'ㅛ', 'ㅕ', 'ㅑ', 'ㅐ', 'ㅔ'],
+        //         ['ㅁ','ㄴ','ㅇ','ㄹ','ㅎ','ㅗ','ㅓ','ㅏ','ㅣ', 'enter'],
+        //         ['shift','ㅋ','ㅌ','ㅊ','ㅍ','ㅠ','ㅜ','ㅡ','한/영'],
+        //         ["space"]
+        //     ], 
+        //     koShift : [
+        //         ['뒤로','!','@','#','$','%','^','&','*','(',')', 'backspace'],
+        //         ['ㅃ', 'ㅉ', 'ㄸ', 'ㄲ', 'ㅆ', 'ㅛ', 'ㅕ', 'ㅑ', 'ㅒ', 'ㅖ'],
+        //         ['ㅁ','ㄴ','ㅇ','ㄹ','ㅎ','ㅗ','ㅓ','ㅏ','ㅣ', 'enter'],
+        //         ['shift','ㅋ','ㅌ','ㅊ','ㅍ','ㅠ','ㅜ','ㅡ','한/영'],
+        //         ["space"]
+        //     ],
+        //     enNormal : [
+        //         ['뒤로','1','2','3','4','5','6','7','8','9','0', 'backspace'],
+        //         ['q','w','e','r','t','y','u','i','o','p'],
+        //         ['a','s','d','f','g','h','j','k','l','enter'],
+        //         ['shift','z','x','c','v','b','n','m','한/영'],
+        //         ["space"]
+        //     ],
+        //     enShift : [
+        //         ['뒤로','!','@','#','$','%','^','&','*','(',')', 'backspace'],
+        //         ['Q','W','E','R','T','Y','U','I','O','P'],
+        //         ['A','S','D','F','G','H','J','K','L','enter'],
+        //         ['shift','Z','X','C','V','B','N','M','한/영'],
+        //         ["space"]
+        //     ]
+        // }
+    );
+
+	input.addEventListener("click", function() {
+        //input 태그를 자신으로 설정
+        keyboard.setInput(this);
+        //키패드 클릭 이벤트 설정
+        keyboard.setClick(function(text) {
+            console.log("input을 click한 후 : ", text);
+        })
+        //앤터 이벤트 설정
+        keyboard.setEnter(function(e) {
+            menu3searching(e)
+        });
+    })
+    
+      // '앨범닫기' 버튼 클릭 시
+  document.querySelector('.btn_gallery').addEventListener('click', function() {
+    // keyboardzone의 display를 none으로 설정
+    document.getElementById('keyboardzone').style.display = 'none';
+    
+    // search input의 값을 초기화
+    document.getElementById('search').value = '';
+  });
+
+  // '뒤로' 버튼 클릭 시
+  document.querySelector('.btn_gallery.btn_gall_top').addEventListener('click', function() {
+    // keyboardzone의 display를 none으로 설정
+    document.getElementById('keyboardzone').style.display = 'none';
+
+    // search input의 값을 초기화
+    document.getElementById('search').value = '';
+  });
+  
+  
+ function kid_search(){
+	
+	 var branch_idx = document.getElementById("branch_idx").value;
+	 var kid_name = document.getElementById("search").value;
+	 
+	 if(kid_name!=""){
+	 	$.ajax({
+				url:'../kid_album_list_ajax.php',
+				type:'post',
+				data:{"branch_idx" : branch_idx,"kid_name" : kid_name},
+				success:function(data){
+					$("#srchResult").html(data);
+					$("#srchResult").modal("open");
+				}
+			});
+	 }else{
+	 	alert("학생 이름을 입력해주세요.");
+	 	return;
+	 }
+		
+}
+
+ function kid_search_detail(kid_name,kid_birth){
+	
+	 var branch_idx = document.getElementById("branch_idx").value;
+	 
+	 if(kid_name!=""){
+	 	$.ajax({
+				url:'../kid_album_detail_ajax.php',
+				type:'post',
+				data:{"branch_idx" : branch_idx,"kid_name" : kid_name,"kid_birth" : kid_birth},
+				success:function(data){
+					$("#srchDetail").html(data);
+					$("#srchDetail").modal("open");
+				}
+			});
+	 }else{
+	 	alert("학생 이름을 입력해주세요.");
+	 	return;
+	 }
+		
+}
+</script>
+
+
+</body>
+</html>
